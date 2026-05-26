@@ -5,7 +5,7 @@ def generate_customer_label(row: dict) -> dict:
             "llm_label": "可推荐",
             "llm_reason": "信用良好，风险较低"
         }
-    elif row.get('risk_score') > 70:
+    elif row.get('risk_score') >= 70:
         return {
             "llm_label": "不推荐",
             "llm_reason": "风险过高"
