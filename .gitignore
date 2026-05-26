@@ -4,3 +4,5 @@ __pycache__/
 .env
 runs/*
 !runs/.gitkeep
+
+daily-plan/

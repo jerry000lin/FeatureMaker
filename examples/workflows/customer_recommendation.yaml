@@ -1,0 +1,43 @@
+version: "1.0"
+name: customer_recommendation
+
+dataset:
+  type: csv
+  path: ./examples/datasets/customers.csv
+  id_column: customer_id
+  encoding: utf-8
+
+output:
+  type: csv
+  path: ./runs/customer_recommendation/output.csv
+  include_input_columns: true
+
+nodes:
+  - id: classify_customer
+    type: llm_extract
+    scope: row
+    prompt_template: |
+      请根据以下客户信息判断是否适合推荐：
+      年龄：{{ row.age }}
+      信用分：{{ row.credit_score }}
+      风险分：{{ row.risk_score }}
+      备注：{{ row.remark }}
+
+      请只输出 JSON：
+      {
+        "llm_label": "可推荐/谨慎推荐/不推荐",
+        "llm_reason": "原因"
+      }
+    output_schema:
+      llm_label: string
+      llm_reason: string
+    write_to:
+      columns:
+        llm_label: "$output.llm_label"
+        llm_reason: "$output.llm_reason"
+
+  - id: final_summary
+    type: table_summary
+    scope: table
+    output:
+      artifact_path: ./runs/customer_recommendation/artifacts/summary.md
