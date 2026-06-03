@@ -6,3 +6,8 @@ runs/*
 !runs/.gitkeep
 
 daily-plan/
+
+.pytest_cache/
+*.egg-info/
+dist/
+build/
