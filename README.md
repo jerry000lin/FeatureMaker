@@ -4,15 +4,18 @@ FeatureMaker 是一个面向表数据的数据加工与 LLM Agents 编排平台�
 
 ## 开发环境运行
 
-```sh
+```bash
 cd apps/backend
 
-# 安装后端运行依赖和开发依赖
-poetry install --with dev
+# 安装并同步依赖
+uv sync
 
-# 运行后端测试
-poetry run python -m pytest
+# 运行测试
+uv run python -m pytest
 
-# 启动 FastAPI 开发服务
-poetry run uvicorn featuremaker.main:app --reload
+# 启动开发服务
+uv run fastapi dev
+
+# 查看数据库迁移状态
+uv run alembic current
 ```

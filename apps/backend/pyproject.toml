@@ -7,7 +7,7 @@ dependencies = [
     "uvicorn",
     "pydantic-settings",
     "sqlalchemy",
-    "psycopg[binary] (>=3.3.4,<4.0.0)",
+    "psycopg[binary]>=3.3.4,<4.0.0",
     "alembic",
 ]
 
@@ -17,8 +17,6 @@ dev = [
     "httpx",
 ]
 
-[tool.poetry]
-package-mode = false
 
 [tool.fastapi]
 entrypoint = "featuremaker.main:app"
