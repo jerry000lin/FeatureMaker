@@ -24,8 +24,8 @@ class WorkflowNodeExecutionStatus(enum.Enum):
 class Workflow(AuditMixin, Base):
     __tablename__ = "workflows"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column()
-    description: Mapped[str | None] = mapped_column()
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
     graph_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
     workflow_runs: Mapped[list["WorkflowRun"]] = relationship(
