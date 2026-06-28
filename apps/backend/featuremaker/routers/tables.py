@@ -6,7 +6,9 @@ from featuremaker.deps import get_table_asset_service
 from featuremaker.schemas.common import ApiResponse, PageParams, PageResponse, api_error, api_success
 from featuremaker.schemas.tables import TableAssetDetail, TableAssetSummary, TablePreviewResponse
 from featuremaker.services.table_service import (
+    TableAssetImportError,
     TableAssetInvalidFileTypeError,
+    TableAssetNameExistsError,
     TableAssetNotFoundError,
     TableAssetService,
 )
@@ -47,6 +49,16 @@ async def import_csv_table(
             status_code=400,
             content=api_error(ResponseCode.VALIDATION_ERROR, message=str(error)).model_dump(mode="json"),
         )
+    except TableAssetNameExistsError:
+        return JSONResponse(
+            status_code=400,
+            content=api_error(ResponseCode.TABLE_NAME_EXISTS).model_dump(mode="json"),
+        )
+    except TableAssetImportError as error:
+        return JSONResponse(
+            status_code=400,
+            content=api_error(ResponseCode.VALIDATION_ERROR, message=str(error)).model_dump(mode="json"),
+        )
     return api_success(data=table_asset)
 
 
@@ -68,6 +80,16 @@ async def import_xlsx_table(
             description=description,
         )
     except TableAssetInvalidFileTypeError as error:
+        return JSONResponse(
+            status_code=400,
+            content=api_error(ResponseCode.VALIDATION_ERROR, message=str(error)).model_dump(mode="json"),
+        )
+    except TableAssetNameExistsError:
+        return JSONResponse(
+            status_code=400,
+            content=api_error(ResponseCode.TABLE_NAME_EXISTS).model_dump(mode="json"),
+        )
+    except TableAssetImportError as error:
         return JSONResponse(
             status_code=400,
             content=api_error(ResponseCode.VALIDATION_ERROR, message=str(error)).model_dump(mode="json"),

@@ -47,6 +47,8 @@ class TableAssetDetail(TableAssetSummary):
     表资产详情。
     """
 
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     # schema_json 会与 Pydantic BaseModel 的历史方法名冲突，内部使用 table_schema 避开，
     # 对外仍通过 alias 保持接口字段名为 schema_json。
     table_schema: TableSchema = Field(
@@ -61,6 +63,8 @@ class TablePreviewResponse(BaseModel):
     """
     表预览数据。
     """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     id: int = Field(..., description="表资产 ID")
     # schema_json 会与 Pydantic BaseModel 的历史方法名冲突，内部使用 table_schema 避开，

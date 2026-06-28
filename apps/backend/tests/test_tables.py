@@ -23,7 +23,7 @@ class FakeTableAssetService:
             storage_type=StorageType.LOCAL_CSV,
             row_count=0,
             created_at=datetime.now(),
-            schema_json={"columns": []},
+            table_schema={"columns": []},
         )
 
     def list_tables(self, page: PageParams) -> PageResponse[TableAssetSummary]:
@@ -66,7 +66,7 @@ class FakeTableAssetService:
     def preview_table(self, table_asset_id: int, limit: int) -> TablePreviewResponse:
         return TablePreviewResponse(
             id=table_asset_id,
-            schema_json={"columns": []},
+            table_schema={"columns": []},
             rows=[],
             row_count=0,
         )
@@ -92,6 +92,19 @@ def test_get_table_preview_api(client: TestClient):
     assert body["data"]["schema_json"] == {"columns": []}
     assert body["data"]["rows"] == []
     assert body["data"]["row_count"] == 0
+
+
+def test_table_preview_response_accepts_internal_table_schema_name():
+    preview = TablePreviewResponse(
+        id=1,
+        table_schema={"columns": [{"name": "customer_id", "type": "integer", "nullable": True}]},
+        rows=[],
+        row_count=0,
+    )
+
+    assert preview.model_dump(by_alias=True)["schema_json"] == {
+        "columns": [{"name": "customer_id", "type": "integer", "nullable": True}]
+    }
 
 
 def test_get_tables_api(client: TestClient):

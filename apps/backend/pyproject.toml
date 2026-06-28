@@ -9,6 +9,8 @@ dependencies = [
     "sqlalchemy",
     "psycopg[binary]>=3.3.4,<4.0.0",
     "alembic",
+    "openpyxl>=3.1.5",
+    "pandas>=2.3.3",
 ]
 
 [dependency-groups]

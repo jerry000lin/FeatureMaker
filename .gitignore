@@ -11,3 +11,5 @@ daily-plan/
 *.egg-info/
 dist/
 build/
+
+apps/backend/data/
