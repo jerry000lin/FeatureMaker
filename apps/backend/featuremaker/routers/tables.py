@@ -4,7 +4,14 @@ from fastapi.responses import JSONResponse
 from featuremaker.core.response_code import ResponseCode
 from featuremaker.deps import get_table_asset_service
 from featuremaker.schemas.common import ApiResponse, PageParams, PageResponse, api_error, api_success
-from featuremaker.schemas.tables import TableAssetDetail, TableAssetSummary, TablePreviewResponse
+from featuremaker.schemas.tables import (
+    TableAssetDeleteRequest,
+    TableAssetDeleteResponse,
+    TableAssetDetail,
+    TableAssetSummary,
+    TableAssetUpdateRequest,
+    TablePreviewResponse,
+)
 from featuremaker.services.table_service import (
     TableAssetImportError,
     TableAssetInvalidFileTypeError,
@@ -132,3 +139,44 @@ async def get_table_preview(
             content=api_error(ResponseCode.TABLE_NOT_FOUND).model_dump(mode="json"),
         )
     return api_success(data=preview)
+
+
+@router.post("/update", response_model=ApiResponse[TableAssetDetail])
+async def update_table(
+    request: TableAssetUpdateRequest,
+    service: TableAssetService = Depends(get_table_asset_service),
+):
+    """
+    更新表资产元信息。
+    """
+    try:
+        table_asset = service.update_table(request=request)
+    except TableAssetNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content=api_error(ResponseCode.TABLE_NOT_FOUND).model_dump(mode="json"),
+        )
+    except TableAssetNameExistsError:
+        return JSONResponse(
+            status_code=400,
+            content=api_error(ResponseCode.TABLE_NAME_EXISTS).model_dump(mode="json"),
+        )
+    return api_success(data=table_asset)
+
+
+@router.post("/delete", response_model=ApiResponse[TableAssetDeleteResponse])
+async def delete_table(
+    request: TableAssetDeleteRequest,
+    service: TableAssetService = Depends(get_table_asset_service),
+):
+    """
+    软删除表资产。
+    """
+    try:
+        result = service.delete_table(request=request)
+    except TableAssetNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content=api_error(ResponseCode.TABLE_NOT_FOUND).model_dump(mode="json"),
+        )
+    return api_success(data=result)

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -16,7 +18,11 @@ class TableAssetRepository:
         """
         根据 ID 查询表资产。
         """
-        return self.session.get(TableAsset, table_asset_id)
+        statement = select(TableAsset).where(
+            TableAsset.id == table_asset_id,
+            TableAsset.deleted_at.is_(None),
+        )
+        return self.session.scalar(statement)
 
     def list(self, *, offset: int, limit: int) -> list[TableAsset]:
         """
@@ -24,6 +30,7 @@ class TableAssetRepository:
         """
         statement = (
             select(TableAsset)
+            .where(TableAsset.deleted_at.is_(None))
             .order_by(TableAsset.created_at.desc(), TableAsset.id.desc())
             .offset(offset)
             .limit(limit)
@@ -34,14 +41,25 @@ class TableAssetRepository:
         """
         统计表资产总数。
         """
-        statement = select(func.count()).select_from(TableAsset)
+        statement = select(func.count()).select_from(TableAsset).where(TableAsset.deleted_at.is_(None))
         return self.session.scalar(statement) or 0
 
-    def exists_by_name(self, name: str) -> bool:
+    def exists_by_name(self, name: str, *, exclude_id: int | None = None) -> bool:
         """
         判断表资产名称是否已存在。
         """
-        statement = select(func.count()).select_from(TableAsset).where(TableAsset.name == name)
+        conditions = [
+            TableAsset.name == name,
+            TableAsset.deleted_at.is_(None),
+        ]
+        if exclude_id is not None:
+            conditions.append(TableAsset.id != exclude_id)
+
+        statement = (
+            select(func.count())
+            .select_from(TableAsset)
+            .where(*conditions)
+        )
         return (self.session.scalar(statement) or 0) > 0
 
     def create(self, table_asset: TableAsset) -> TableAsset:
@@ -60,9 +78,12 @@ class TableAssetRepository:
         self.session.flush()
         return table_asset
 
-    def delete(self, table_asset: TableAsset) -> None:
+    def soft_delete(self, table_asset: TableAsset, *, deleted_by: int | None = None) -> TableAsset:
         """
-        删除表资产记录。
+        软删除表资产记录。
         """
-        self.session.delete(table_asset)
+        table_asset.deleted_at = datetime.now()
+        table_asset.deleted_by = deleted_by
+        self.session.add(table_asset)
         self.session.flush()
+        return table_asset

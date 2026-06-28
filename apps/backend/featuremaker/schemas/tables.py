@@ -59,6 +59,16 @@ class TableAssetDetail(TableAssetSummary):
     )
 
 
+class TableAssetUpdateRequest(BaseModel):
+    """
+    表资产元信息更新请求。
+    """
+
+    id: int = Field(..., description="表资产 ID")
+    name: str | None = Field(default=None, min_length=1, max_length=255, description="表资产名称")
+    description: str | None = Field(default=None, max_length=1024, description="表资产描述")
+
+
 class TablePreviewResponse(BaseModel):
     """
     表预览数据。
@@ -77,3 +87,20 @@ class TablePreviewResponse(BaseModel):
     )
     rows: list[dict[str, Any]] = Field(default_factory=list, description="表预览数据")
     row_count: int = Field(default=0, description="表总行数")
+
+
+class TableAssetDeleteRequest(BaseModel):
+    """
+    表资产删除请求。
+    """
+
+    id: int = Field(..., description="表资产 ID")
+
+
+class TableAssetDeleteResponse(BaseModel):
+    """
+    表资产删除结果。
+    """
+
+    id: int = Field(..., description="表资产 ID")
+    name: str = Field(..., description="表资产名称")

@@ -13,3 +13,5 @@ dist/
 build/
 
 apps/backend/data/
+
+.vscode/settings.json

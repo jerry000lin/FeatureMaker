@@ -38,6 +38,14 @@ echo "该操作会删除 featuremaker 数据库 public schema 下的所有表、
 echo "不会删除 Docker volume。"
 echo
 
+read -r -p "确认执行请输入 RESET，其它输入将取消： " CONFIRM_RESET
+if [[ "${CONFIRM_RESET}" != "RESET" ]]; then
+    echo "已取消数据库 schema 重置。"
+    exit 0
+fi
+
+echo
+
 docker compose exec postgres \
     psql \
     -U featuremaker \

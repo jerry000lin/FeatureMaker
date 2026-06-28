@@ -9,8 +9,21 @@ from featuremaker.deps import get_table_asset_service
 from featuremaker.main import app
 from featuremaker.models.table import SourceType, StorageType
 from featuremaker.schemas.common import PageParams, PageResponse
-from featuremaker.schemas.tables import TableAssetDetail, TableAssetSummary, TablePreviewResponse
-from featuremaker.services.table_service import TableAssetInvalidFileTypeError, TableAssetNotFoundError
+from featuremaker.schemas.tables import (
+    TableColumnSchema,
+    TableAssetDeleteRequest,
+    TableAssetDeleteResponse,
+    TableAssetDetail,
+    TableAssetSummary,
+    TableAssetUpdateRequest,
+    TablePreviewResponse,
+    TableSchema,
+)
+from featuremaker.services.table_service import (
+    TableAssetInvalidFileTypeError,
+    TableAssetNameExistsError,
+    TableAssetNotFoundError,
+)
 
 
 class FakeTableAssetService:
@@ -23,7 +36,7 @@ class FakeTableAssetService:
             storage_type=StorageType.LOCAL_CSV,
             row_count=0,
             created_at=datetime.now(),
-            table_schema={"columns": []},
+            table_schema=TableSchema(),
         )
 
     def list_tables(self, page: PageParams) -> PageResponse[TableAssetSummary]:
@@ -66,10 +79,22 @@ class FakeTableAssetService:
     def preview_table(self, table_asset_id: int, limit: int) -> TablePreviewResponse:
         return TablePreviewResponse(
             id=table_asset_id,
-            table_schema={"columns": []},
+            table_schema=TableSchema(),
             rows=[],
             row_count=0,
         )
+
+    def update_table(self, request: TableAssetUpdateRequest) -> TableAssetDetail:
+        if request.id == 404:
+            raise TableAssetNotFoundError("表资产不存在")
+        if request.name == "exists":
+            raise TableAssetNameExistsError("表资产名称已存在")
+        return self._fake_table(request.id, request.name or "customers")
+
+    def delete_table(self, request: TableAssetDeleteRequest) -> TableAssetDeleteResponse:
+        if request.id == 404:
+            raise TableAssetNotFoundError("表资产不存在")
+        return TableAssetDeleteResponse(id=request.id, name="customers")
 
 
 @pytest.fixture
@@ -97,7 +122,9 @@ def test_get_table_preview_api(client: TestClient):
 def test_table_preview_response_accepts_internal_table_schema_name():
     preview = TablePreviewResponse(
         id=1,
-        table_schema={"columns": [{"name": "customer_id", "type": "integer", "nullable": True}]},
+        table_schema=TableSchema(
+            columns=[TableColumnSchema(name="customer_id", type="integer", nullable=True)],
+        ),
         rows=[],
         row_count=0,
     )
@@ -190,6 +217,65 @@ def test_get_table_api(client: TestClient):
 
 def test_get_table_not_found_api(client: TestClient):
     response = client.get("/tables/404")
+
+    assert response.status_code == 404
+
+    body = response.json()
+    assert body["code"] == "TABLE_NOT_FOUND"
+    assert body["message"] == "表资产不存在"
+    assert body["data"] is None
+
+
+def test_update_table_api(client: TestClient):
+    response = client.post(
+        "/tables/update",
+        json={"id": 123, "name": "customers_v2", "description": None},
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["code"] == "OK"
+    assert body["message"] == "成功"
+    assert body["data"]["id"] == 123
+    assert body["data"]["name"] == "customers_v2"
+
+
+def test_update_table_not_found_api(client: TestClient):
+    response = client.post("/tables/update", json={"id": 404, "name": "customers_v2"})
+
+    assert response.status_code == 404
+
+    body = response.json()
+    assert body["code"] == "TABLE_NOT_FOUND"
+    assert body["message"] == "表资产不存在"
+    assert body["data"] is None
+
+
+def test_update_table_rejects_duplicate_name(client: TestClient):
+    response = client.post("/tables/update", json={"id": 123, "name": "exists"})
+
+    assert response.status_code == 400
+
+    body = response.json()
+    assert body["code"] == "TABLE_NAME_EXISTS"
+    assert body["message"] == "表资产名称已存在"
+    assert body["data"] is None
+
+
+def test_delete_table_api(client: TestClient):
+    response = client.post("/tables/delete", json={"id": 123})
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["code"] == "OK"
+    assert body["message"] == "成功"
+    assert body["data"] == {"id": 123, "name": "customers"}
+
+
+def test_delete_table_not_found_api(client: TestClient):
+    response = client.post("/tables/delete", json={"id": 404})
 
     assert response.status_code == 404
 

@@ -3,12 +3,21 @@ from io import StringIO
 from typing import BinaryIO
 
 from openpyxl import load_workbook
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from featuremaker.models.table import SourceType, StorageType, TableAsset
 from featuremaker.repositories.table_asset_repository import TableAssetRepository
 from featuremaker.schemas.common import PageParams, PageResponse
-from featuremaker.schemas.tables import TableAssetDetail, TableAssetSummary, TablePreviewResponse, TableSchema
+from featuremaker.schemas.tables import (
+    TableAssetDeleteResponse,
+    TableAssetDeleteRequest,
+    TableAssetDetail,
+    TableAssetSummary,
+    TableAssetUpdateRequest,
+    TablePreviewResponse,
+    TableSchema,
+)
 from featuremaker.storage.local_table_storage import LocalTableStorage
 from featuremaker.table_engines.pandas_table_engine import PandasTableEngine
 
@@ -111,6 +120,11 @@ class TableAssetService:
             table_asset_detail = TableAssetDetail.model_validate(table_asset)
             self.session.commit()
             return table_asset_detail
+        except IntegrityError as error:
+            self.session.rollback()
+            if storage_uri is not None:
+                self.storage.delete(storage_uri)
+            raise TableAssetNameExistsError("表资产名称已存在") from error
         except Exception as error:
             self.session.rollback()
             if storage_uri is not None:
@@ -148,6 +162,11 @@ class TableAssetService:
             table_asset_detail = TableAssetDetail.model_validate(table_asset)
             self.session.commit()
             return table_asset_detail
+        except IntegrityError as error:
+            self.session.rollback()
+            if storage_uri is not None:
+                self.storage.delete(storage_uri)
+            raise TableAssetNameExistsError("表资产名称已存在") from error
         except Exception as error:
             self.session.rollback()
             if storage_uri is not None:
@@ -173,6 +192,52 @@ class TableAssetService:
             rows=rows,
             row_count=table_asset.row_count or 0,
         )
+
+    def update_table(self, request: TableAssetUpdateRequest) -> TableAssetDetail:
+        """
+        更新表资产元信息。
+        """
+        table_asset = self.repository.get_by_id(request.id)
+        if table_asset is None:
+            raise TableAssetNotFoundError(f"表资产不存在: {request.id}")
+
+        if request.name is not None and request.name != table_asset.name:
+            if self.repository.exists_by_name(request.name, exclude_id=table_asset.id):
+                raise TableAssetNameExistsError("表资产名称已存在")
+            table_asset.name = request.name
+
+        if "description" in request.model_fields_set:
+            table_asset.description = request.description
+
+        try:
+            self.repository.update(table_asset)
+            table_asset_detail = TableAssetDetail.model_validate(table_asset)
+            self.session.commit()
+            return table_asset_detail
+        except IntegrityError as error:
+            self.session.rollback()
+            raise TableAssetNameExistsError("表资产名称已存在") from error
+        except Exception:
+            self.session.rollback()
+            raise
+
+    def delete_table(self, request: TableAssetDeleteRequest) -> TableAssetDeleteResponse:
+        """
+        软删除表资产。
+        """
+        table_asset = self.repository.get_by_id(request.id)
+        if table_asset is None:
+            raise TableAssetNotFoundError(f"表资产不存在: {request.id}")
+        table_asset_name = table_asset.name
+
+        try:
+            self.repository.soft_delete(table_asset)
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            raise
+
+        return TableAssetDeleteResponse(id=request.id, name=table_asset_name)
 
     def _convert_xlsx_to_csv(self, file_obj: BinaryIO) -> str:
         workbook = load_workbook(file_obj, read_only=True, data_only=True)
